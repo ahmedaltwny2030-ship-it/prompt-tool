@@ -1,60 +1,85 @@
 import streamlit as st
 
 # إعداد الصفحة
-st.set_page_config(page_title="مساعد التصميم الاحترافي", layout="centered")
+st.set_page_config(page_title="Nano Banana Pro Generator", layout="centered", page_icon="🍌")
 
-# العنوان الرئيسي
-st.title("🎨 مساعد توليد البرومبت الاحترافي")
+# العنوان والشعار
+st.title("🍌 Nano Banana Pro | مولد البرومبت")
+st.caption("أداة متخصصة لنموذج Gemini 3 Pro Image")
 st.markdown("---")
 
-# تقسيم الصفحة لعمودين
+# 1. العمود الأيمن: إعدادات الصورة الأساسية
 col1, col2 = st.columns(2)
 
 with col1:
-    # قائمة اختيار النمط
     style = st.selectbox(
-        "اختر النمط (Style)", 
-        ["تصوير واقعي (Cinematic)", "تصوير منتجات (Product)", "ثلاثي الأبعاد (3D Render)", "رسم رقمي (Digital Art)"]
+        "نط الصورة (Style)", 
+        ["فوتوغرافية (Photography)", "إعلان تجاري (Advertising)", "انفوجرافيك (Infographic)", "ثلاثي الأبعاد (3D Render)", "تصميم واجهة (UI Design)"]
+    )
+    
+    aspect_ratio = st.selectbox(
+        "الأبعاد (Aspect Ratio)",
+        ["16:9 (عريض - يوتيوب/شاشات)", "9:16 (طولي - تيك توك/ريلز)", "1:1 (مربع - انستجرام)", "21:9 (سينمائي)"]
     )
 
+# 2. العمود الأيسر: الدقة والنصوص
 with col2:
-    # مربع كتابة النص
-    subject = st.text_input("ماذا تريد أن تصمم؟", placeholder="مثال: علبة عطر فاخرة، رجل ببدلة...")
+    resolution = st.selectbox("الدقة (Resolution)", ["4K (Ultra HD)", "2K (Standard)", "8K (Upscaled)"])
+    
+    # ميزة حصرية لـ Nano Banana: كتابة النصوص
+    text_on_image = st.text_input("نص يكتب داخل الصورة (اختياري)", placeholder="مثال: Special Offer")
 
-# خيارات إضافية للإضاءة
-lighting = st.select_slider("اختر نوع الإضاءة", options=["إضاءة نهارية", "إضاءة استوديو", "إضاءة درامية", "إضاءة نيون"])
+# 3. وصف المشهد (الأساس)
+st.markdown("### 📝 وصف المشهد")
+subject = st.text_area("اشرح فكرتك بالتفصيل", placeholder="مثال: زجاجة عطر فاخرة من الكريستال الأزرق موضوعة على صخرة سوداء في وسط البحر...", height=100)
 
-# دالة التوليد (العقل المدبر)
-def generate_prompt(sub, sty, lig):
-    # قاموس الأنماط
-    styles_map = {
-        "تصوير واقعي (Cinematic)": "cinematic shot, 35mm lens, depth of field, hyperrealistic, 8k",
-        "تصوير منتجات (Product)": "professional product photography, studio lighting, clean background, advertising standard, 8k",
-        "ثلاثي الأبعاد (3D Render)": "3D render, Unreal Engine 5, octane render, c4d, hyper-detailed",
-        "رسم رقمي (Digital Art)": "digital art, concept art, detailed illustration, masterpiece"
+# دالة التوليد المتخصصة لـ Nano Banana
+def generate_nano_prompt(sub, sty, ar, res, txt):
+    # تحويل الأبعاد لصيغة يفهمها الموديل
+    ar_map = {
+        "16:9 (عريض - يوتيوب/شاشات)": "--ar 16:9",
+        "9:16 (طولي - تيك توك/ريلز)": "--ar 9:16",
+        "1:1 (مربع - انستجرام)": "--ar 1:1",
+        "21:9 (سينمائي)": "--ar 21:9"
     }
     
-    # قاموس الإضاءة
-    light_map = {
-        "إضاءة نهارية": "natural sunlight, golden hour, bright, soft shadows",
-        "إضاءة استوديو": "soft studio lighting, softbox, professional setup, evenly lit",
-        "إضاءة درامية": "dramatic lighting, rim light, volumetric fog, moody",
-        "إضاءة نيون": "neon lighting, cyberpunk atmosphere, colorful, glowing"
+    # تحسينات الأنماط الخاصة بـ Nano Banana
+    style_prompts = {
+        "فوتوغرافية (Photography)": "shot on Sony A7R IV, 85mm lens, photorealistic, depth of field",
+        "إعلان تجاري (Advertising)": "professional product photography, studio lighting, advertising standard, clean background, commercial look",
+        "انفوجرافيك (Infographic)": "clean infographic style, vector graphics, educational layout, minimalist design, clear typography",
+        "ثلاثي الأبعاد (3D Render)": "3D render, Unreal Engine 5 style, octane render, hyper-detailed textures, volumetric lighting",
+        "تصميم واجهة (UI Design)": "modern UI/UX design, glassmorphism, clean interface, figma style, high fidelity mockup"
     }
-    
-    # تجميع البرومبت النهائي
-    final_prompt = f"{sub}, {styles_map[sty]}, {light_map[lig]}, 8k resolution, masterpiece, sharp focus, HDR, high fidelity"
-    return final_prompt
 
-# زر التشغيل
-if st.button("✨ توليد البرومبت", use_container_width=True):
+    # بناء البرومبت
+    base_prompt = f"{sub}"
+    
+    # إضافة النص إذا وجد (ميزة Nano القوية)
+    text_instruction = ""
+    if txt:
+        text_instruction = f", render the text '{txt}' clearly and elegantly in a matching font"
+    
+    # تجميع الأجزاء
+    full_prompt = (
+        f"Generate a {resolution} image of {base_prompt}. "
+        f"Style: {style_prompts[sty]}{text_instruction}. "
+        f"Lighting: Cinematic lighting with soft shadows. "
+        f"Quality: Masterpiece, highly detailed, sharp focus. "
+        f"{ar_map[ar]}"
+    )
+    
+    return full_prompt
+
+# زر التنفيذ
+if st.button("🚀 توليد كود Nano Banana", use_container_width=True):
     if subject:
-        # استدعاء الدالة
-        prompt = generate_prompt(subject, style, lighting)
+        final_prompt = generate_nano_prompt(subject, style, aspect_ratio, resolution, text_on_image)
         
-        # عرض النتيجة
-        st.success("تم التوليد بنجاح! انسخ النص أدناه:")
-        st.code(prompt, language="text")
-        st.info("نصيحة: خذ هذا النص وضعه في Midjourney أو Leonardo للحصول على أفضل نتيجة.")
+        st.success("تم تجهيز البرومبت! انسخه للنموذج:")
+        st.code(final_prompt, language="text")
+        
+        # نصائح إضافية تظهر بعد التوليد
+        st.info("💡 نصيحة للمحترفين: نموذج Nano Banana Pro يحب التفاصيل الطبيعية، لا تتردد في وصف الإضاءة (مثلاً: Sunset, Neon light).")
     else:
-        st.warning("يرجى كتابة اسم الشيء الذي تريد تصميمه أولاً.")
+        st.warning("⚠️ يرجى كتابة وصف المشهد أولاً")
