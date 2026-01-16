@@ -3,7 +3,9 @@ import google.generativeai as genai
 from PIL import Image
 
 st.set_page_config(page_title="Nano Banana Pro", page_icon="🍌")
-st.title("🍌 Nano Banana Pro | المكتشف الذكي")
+st.title("🍌 Nano Banana Pro | المختار الآلي")
+st.caption("اختر الموديل من القائمة وجرب حتى يعمل معك")
+st.markdown("---")
 
 # 1. إعداد الاتصال
 if "GOOGLE_API_KEY" in st.secrets:
@@ -12,53 +14,41 @@ else:
     st.error("⚠️ يجب وضع مفتاح API Key في الـ Secrets")
     st.stop()
 
-# 2. دالة ذكية تجرب كل الموديلات المعروفة حتى ينجح واحد منها
-def smart_generate(image_input, prompt_text):
-    # قائمة بكل الموديلات المحتملة (الجديد والقديم)
-    candidates = [
-        "gemini-1.5-flash", 
-        "gemini-1.5-pro", 
-        "gemini-pro-vision", 
-        "models/gemini-1.5-flash-latest",
-        "gemini-1.0-pro-vision-latest"
-    ]
-    
-    last_error = ""
-    
-    # حلقة تكرار تجربهم واحداً تلو الآخر
-    for model_name in candidates:
-        try:
-            model = genai.GenerativeModel(model_name)
-            response = model.generate_content([prompt_text, image_input])
-            return response.text, model_name # نجح! مبروك
-        except Exception as e:
-            last_error = str(e)
-            continue # فشل هذا، جرب اللي بعده فوراً
-            
-    return None, last_error
+# 2. جلب الموديلات المتاحة لك فعلياً
+try:
+    # نطلب من جوجل القائمة الخاصة بك
+    my_models = []
+    for m in genai.list_models():
+        # نأخذ فقط الموديلات التي تدعم الصور (Vision)
+        if 'vision' in m.supported_generation_methods or 'generateContent' in m.supported_generation_methods:
+            my_models.append(m.name)
+    # نرتبها لتظهر الموديلات الجديدة (Flash) في البداية
+    my_models.sort(reverse=True)
+except Exception as e:
+    st.error(f"لم أتمكن من جلب القائمة: {e}")
+    my_models = ["models/gemini-1.5-flash", "models/gemini-pro-vision"]
 
-# 3. الواجهة
-st.write("ارفع الصورة وسأبحث عن الموديل المناسب لحسابك تلقائياً:")
-uploaded_file = st.file_uploader("اختر صورة", type=["jpg", "png", "jpeg"])
+# 3. واجهة التطبيق
+# === القائمة المنسدلة (الحل السحري) ===
+selected_model = st.selectbox("⬇️ اختر الموديل من هنا (جرب الأول، إذا فشل جرب الثاني):", my_models)
+
+uploaded_file = st.file_uploader("ارفع الصورة هنا", type=["jpg", "png", "jpeg"])
 
 if uploaded_file:
     image = Image.open(uploaded_file)
     st.image(image, width=200)
     
-    if st.button("🚀 تحليل (تجربة الكل)"):
-        with st.spinner('جاري تجربة الموديلات المتاحة...'):
-            result, model_used = smart_generate(image, "Describe this image in detail")
-            
-            if result:
-                st.success(f"✅ تم النجاح! الموديل الذي اشتغل معك هو: {model_used}")
-                st.write(result)
-                st.code(result)
-            else:
-                st.error("❌ للأسف حسابك لا يدعم أي موديل صور حالياً. إليك قائمة الموديلات المتاحة في مفتاحك:")
-                # كود تشخيصي لطباعة الموديلات المتاحة فعلياً
-                try:
-                    for m in genai.list_models():
-                        if 'vision' in m.supported_generation_methods or 'generateContent' in m.supported_generation_methods:
-                            st.write(f"- {m.name}")
-                except:
-                    st.write("لم أتمكن من جلب القائمة.")
+    if st.button("🚀 تحليل الصورة"):
+        with st.spinner(f'جاري التحليل باستخدام {selected_model}...'):
+            try:
+                # نستخدم الموديل الذي اخترته أنت بيدك
+                model = genai.GenerativeModel(selected_model)
+                response = model.generate_content(["Describe this image in detail for AI prompt generation", image])
+                
+                st.success(f"✅ تم النجاح بالموديل: {selected_model}")
+                st.write(response.text)
+                st.code(response.text)
+                
+            except Exception as e:
+                st.error("❌ فشل هذا الموديل، جرب اختيار موديل آخر من القائمة في الأعلى.")
+                st.error(e)
