@@ -1,59 +1,70 @@
 import streamlit as st
-import google.generativeai as genai
-from PIL import Image
-import time
+import subprocess
+import sys
+import os
 
+# --- أداة الإصلاح الذاتي (Force Update) ---
+# هذا الجزء يجبر السيرفر على تحميل أحدث نسخة رغماً عنه
+try:
+    import google.generativeai as genai
+    # نتأكد هل النسخة قديمة؟
+    if genai.__version__ < "0.8.3":
+        st.toast("⚠️ جاري تحديث النظام تلقائياً... انتظر لحظة", icon="🔄")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "google-generativeai"])
+        import google.generativeai as genai
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "google-generativeai"])
+    import google.generativeai as genai
+
+from PIL import Image
+
+# إعداد الصفحة
 st.set_page_config(page_title="Nano Banana Pro", page_icon="🍌")
 
-st.title("🍌 Nano Banana Pro | المصحح التلقائي")
-st.write("---")
+# --- واجهة التطبيق ---
+st.title("🍌 Nano Banana Pro | الإصدار المحدث")
 
-# 1. إعداد الاتصال
-api_status = False
+# طباعة رقم النسخة للتأكد (ستظهر لك في أعلى التطبيق)
+st.caption(f"System Version: {genai.__version__} (Correct ✅)")
+st.markdown("---")
+
+# إعداد المفتاح
+api_working = False
 if "GOOGLE_API_KEY" in st.secrets:
     genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-    api_status = True
+    api_working = True
 else:
-    st.error("⚠️ لم يتم العثور على مفتاح API. تأكد من وضعه في Secrets.")
+    st.error("⚠️ لم يتم العثور على مفتاح API Key.")
 
-# 2. الدالة الذكية لتجربة الموديلات (نظام الطوارئ)
-def try_generate_content(image_input, prompt):
-    # قائمة الموديلات التي سنحاول استخدامها بالترتيب
-    models_to_try = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-pro-vision"]
-    
-    errors = []
-    
-    # حلقة تكرار لتجربة الموديلات واحداً تلو الآخر
-    for model_name in models_to_try:
-        try:
-            model = genai.GenerativeModel(model_name)
-            # محاولة التوليد
-            response = model.generate_content([prompt, image_input])
-            return response.text, model_name # نجح! نرجع النتيجة واسم الموديل
-        except Exception as e:
-            errors.append(f"{model_name}: {str(e)}")
-            continue # فشل هذا الموديل، جرب التالي
-            
-    # إذا وصلنا هنا، فكل الموديلات فشلت
-    return None, errors
+# تبويبات التطبيق
+tab1, tab2 = st.tabs(["📝 توليد نصي", "🖼️ تحليل صورة"])
 
-# 3. واجهة التطبيق
-uploaded_file = st.file_uploader("ارفع الصورة هنا", type=["jpg", "png", "jpeg"])
+# التبويب 1
+with tab1:
+    txt = st.text_input("ماذا تريد أن تصمم؟")
+    if st.button("توليد"):
+        st.code(f"Imagine {txt}, 8k resolution", language="text")
 
-if uploaded_file:
-    image = Image.open(uploaded_file)
-    st.image(image, width=300)
+# التبويب 2 (المشكلة كانت هنا)
+with tab2:
+    st.write("ارفع الصورة وسأقوم بتحليلها بالموديل الجديد:")
+    uploaded_file = st.file_uploader("اختر صورة", type=["jpg", "png", "jpeg"])
     
-    if st.button("🚀 تحليل الصورة (محاولة ذكية)"):
-        if api_status:
-            with st.spinner('جاري البحث عن موديل يعمل...'):
-                # استدعاء الدالة الذكية
-                result, model_used = try_generate_content(image, "Describe this image in detail for AI prompt generation")
-                
-                if result:
-                    st.success(f"✅ تم النجاح باستخدام الموديل: {model_used}")
-                    st.write(result)
-                    st.code(result, language="text")
-                else:
-                    st.error("❌ فشلت جميع المحاولات. تفاصيل الخطأ التقني:")
-                    st.write(model_used) # هنا سنطبع قائمة الأخطاء لنعرف السبب الحقيقي
+    if uploaded_file:
+        image = Image.open(uploaded_file)
+        st.image(image, width=200)
+        
+        if st.button("🚀 تحليل الصورة"):
+            if api_working:
+                with st.spinner('جاري الاتصال بـ Gemini 1.5 Flash...'):
+                    try:
+                        # نستخدم الموديل السريع والمدعوم
+                        model = genai.GenerativeModel('gemini-1.5-flash')
+                        response = model.generate_content(["Describe this image for AI prompt", image])
+                        st.success("تم التحليل بنجاح! 🎉")
+                        st.write(response.text)
+                    except Exception as e:
+                        st.error("حدث خطأ تقني:")
+                        st.write(e)
+            else:
+                st.error("تحقق من المفتاح السري (Secrets).")
