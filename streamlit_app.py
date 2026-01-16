@@ -9,47 +9,42 @@ api_working = False
 try:
     if "GOOGLE_API_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        # الحل الجذري: استخدام الموديل القياسي المتوافق مع الجميع
-        vision_model = genai.GenerativeModel('gemini-pro-vision')
+        # هذا هو الموديل الوحيد الذي يعمل باستقرار حالياً
+        vision_model = genai.GenerativeModel('gemini-1.5-flash')
         api_working = True
 except Exception as e:
     pass
 
-st.title("🍌 Nano Banana Pro | المساعد الشامل")
+st.title("🍌 Nano Banana Pro")
 st.markdown("---")
 
-tab1, tab2 = st.tabs(["📝 توليد من نص", "🖼️ توليد من صورة"])
+tab1, tab2 = st.tabs(["📝 توليد نصي", "🖼️ تحليل صورة"])
 
-# === تبويب النصوص ===
+# تبويب النصوص
 with tab1:
-    st.write("💡 اكتب فكرتك وسأحولها لبرومبت احترافي:")
-    subject = st.text_area("وصف الفكرة", height=100, placeholder="مثال: علبة عطر زرقاء على الشاطئ...")
-    style = st.selectbox("النمط", ["فوتوغرافية (Realistic)", "سينمائي (Cinematic)", "ثلاثي الأبعاد (3D)"], key="s1")
-    
-    if st.button("✨ توليد البرومبت", key="btn1"):
-        st.success("النتيجة (انسخ النص بالأسفل):")
-        st.code(f"Generate an image of {subject}, Style: {style}, 8k resolution, highly detailed masterpiece", language="text")
+    subject = st.text_area("اكتب فكرتك:", height=100)
+    if st.button("توليد"):
+        st.code(f"Imagine {subject}, 8k resolution", language="text")
 
-# === تبويب الصور (المعدل) ===
+# تبويب الصور (سبب المشكلة)
 with tab2:
-    st.write("📸 ارفع صورة المنتج/التصميم وسأقوم بتحليلها:")
+    st.write("ارفع صورة وسأقوم بتحليلها:")
     uploaded_file = st.file_uploader("اختر صورة", type=["jpg", "png", "jpeg"])
     
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, width=250, caption="الصورة المرفوعة")
+        st.image(image, width=250)
         
         if st.button("🚀 تحليل الصورة", key="btn2"):
             if api_working:
-                with st.spinner('جاري سؤال الذكاء الاصطناعي...'):
+                with st.spinner('جاري الاتصال...'):
                     try:
-                        # هذا الأمر يعمل مع النسخة القياسية
-                        response = vision_model.generate_content(["Describe this image in detail for AI image generation prompt", image])
-                        st.success("✅ تم التحليل بنجاح! انسخ الوصف التالي:")
+                        # الأمر المحدث للنسخة الجديدة
+                        response = vision_model.generate_content(["Describe this image", image])
+                        st.success("تم التحليل:")
                         st.write(response.text)
-                        st.code(f"{response.text}, 8k resolution, highly detailed", language="text")
+                        st.code(response.text, language="text")
                     except Exception as e:
-                        st.error("حدث خطأ تقني. يرجى المحاولة مرة أخرى.")
-                        st.error(e)
+                        st.error(f"Error: {e}")
             else:
-                st.error("⚠️ لم يتم العثور على مفتاح API Key في الإعدادات.")
+                st.error("⚠️ تأكد من وضع مفتاح API Key")
